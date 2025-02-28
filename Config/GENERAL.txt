@@ -1,4 +1,5 @@
 #科学插件调整
+CONFIG_USE_APK=n
 CONFIG_PACKAGE_luci-app-homeproxy=y
 CONFIG_PACKAGE_luci-app-nikki=y
 #增加插件
