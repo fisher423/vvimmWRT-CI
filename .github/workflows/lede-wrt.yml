@@ -1,5 +1,5 @@
 #CI项目
-name: OWRT-ALL
+name: LEDE-WRT
 
 #CI计划
 on:
