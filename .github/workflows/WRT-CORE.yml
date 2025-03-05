@@ -1,5 +1,5 @@
 #云编译公用核心
-name: WRT-CORE
+name: WRT-CORE-3399
 
 on:
   workflow_call:
@@ -83,13 +83,13 @@ jobs:
 
       - name: Initialization Values
         run: |
-          export WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
-          export WRT_MARK=$(echo $GITHUB_REPOSITORY | cut -d '/' -f 1)
+          export WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d")
+          export WRT_CI=$(basename $GITHUB_WORKSPACE)
           export WRT_VER=$(echo $WRT_REPO | cut -d '/' -f 5-)-$WRT_BRANCH
           export WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt | tr '[:lower:]' '[:upper:]')
 
           echo "WRT_DATE=$WRT_DATE" >> $GITHUB_ENV
-          echo "WRT_MARK=$WRT_MARK" >> $GITHUB_ENV
+          echo "WRT_CI=$WRT_CI" >> $GITHUB_ENV
           echo "WRT_VER=$WRT_VER" >> $GITHUB_ENV
           echo "WRT_TARGET=$WRT_TARGET" >> $GITHUB_ENV
 
@@ -163,7 +163,7 @@ jobs:
         run: |
           cd ./wrt/
 
-          cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
+          cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL3399.txt >> .config
 
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
@@ -226,12 +226,6 @@ jobs:
           tag_name: ${{env.WRT_CONFIG}}_${{env.WRT_VER}}_${{env.WRT_DATE}}
           files: ./wrt/upload/*.*
           body: |
-            这是个平台固件包，内含多个设备！
-            请注意选择你需要的设备固件！
-            不要问，刷就完事了！
-
-            全系带开源硬件加速，别问了！
-
             内核版本：${{env.WRT_KVER}}
 
             WIFI名称：${{env.WRT_SSID}}
