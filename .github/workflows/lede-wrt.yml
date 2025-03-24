@@ -33,7 +33,7 @@ jobs:
       #max-parallel: 3
       matrix:
         CONFIG: [FINE3399]
-        SOURCE: [fisher423/lede]
+        SOURCE: [unifreq/lede]
         BRANCH: [master]
 
     #调用公用编译核心WRT-CORE.yml
