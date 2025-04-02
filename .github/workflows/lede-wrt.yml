@@ -34,7 +34,7 @@ jobs:
       matrix:
         CONFIG: [FINE3399]
         SOURCE: [coolsnowwolf/lede]
-        BRANCH: [53661b6a154c17f3d52553decd160239be8a2808]
+        BRANCH: [master]
 
     #调用公用编译核心WRT-CORE.yml
     uses: ./.github/workflows/WRT-CORE.yml
