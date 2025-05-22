@@ -32,7 +32,7 @@ jobs:
       fail-fast: false
       #max-parallel: 3
       matrix:
-        CONFIG: [Fine3399]
+        CONFIG: [fine3399]
         SOURCE: [fisher423/lede]
         BRANCH: [Fine3399]
 
