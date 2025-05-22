@@ -34,7 +34,7 @@ jobs:
       matrix:
         CONFIG: [fine3399]
         SOURCE: [fisher423/lede]
-        BRANCH: [Fine3399]
+        BRANCH: [fine3399]
 
     #调用公用编译核心WRT-CORE-lede.yml
     uses: ./.github/workflows/WRT-CORE-lede.yml
