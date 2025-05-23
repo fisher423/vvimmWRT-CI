@@ -80,14 +80,6 @@ jobs:
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
-          
- 
-          
-  jobs:
-    config:
-      steps:
-        - name: Check Dependencies
-        run: |
           command -v musl-gcc || sudo apt-get install musl-tools
           command -v rustc || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
         
