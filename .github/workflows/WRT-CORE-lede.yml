@@ -80,7 +80,12 @@ jobs:
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
-
+          
+     - name: Install musl toolchain
+       run: |
+          sudo apt-get update
+          sudo apt-get install -y musl musl-dev musl-tools
+    
       - name: Initialization Values
         run: |
           export WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d")
