@@ -83,7 +83,14 @@ jobs:
           
  
           
-    
+  jobs:
+    config:
+      steps:
+        - name: Check Dependencies
+        run: |
+          command -v musl-gcc || sudo apt-get install musl-tools
+          command -v rustc || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        
       - name: Initialization Values
         run: |
           export WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d")
