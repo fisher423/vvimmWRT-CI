@@ -24,11 +24,12 @@ on:
         required: false
         type: boolean
 
-   CLEAN_CACHE:
+      CLEAN_CACHE:
         description: '清理编译缓存（遇到编译问题时启用）'
         default: 'false'
         required: false
         type: boolean
+        
         
 #CI权限
 permissions: write-all
