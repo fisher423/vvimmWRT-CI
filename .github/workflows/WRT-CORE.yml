@@ -44,6 +44,11 @@ on:
         required: false
         type: string
 
+      CLEAN_CACHE:
+        required: false
+        type: string
+        default: 'false'
+      
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
   WRT_CONFIG: ${{inputs.WRT_CONFIG}}
@@ -58,6 +63,7 @@ env:
   WRT_SOURCE: ${{inputs.WRT_SOURCE}}
   WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
   WRT_TEST: ${{inputs.WRT_TEST}}
+  CLEAN_CACHE: ${{inputs.CLEAN_CACHE}}
 
 jobs:
   core:
