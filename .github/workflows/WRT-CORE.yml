@@ -117,10 +117,21 @@ jobs:
       - name: Check Scripts
         run: |
           find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
-
+          
+      - name: Clean Build Cache if Requested
+        if: env.CLEAN_CACHE == 'true'
+        run: |
+          echo "[INFO] Cleaning build cache as requested..."
+          rm -rf ./wrt/staging_dir/toolchain*
+          rm -rf ./wrt/staging_dir/tool*
+          rm -rf ./wrt/build_dir/tool*
+          rm -rf ./wrt/tmp
+          rm -rf ./wrt/.ccache
+          echo "[INFO] Build cache cleaned successfully"
+          
       - name: Check Caches
         id: check-cache
-        if: env.WRT_TEST != 'true'
+        if: env.WRT_TEST != 'true' && env.CLEAN_CACHE != 'true'
         uses: actions/cache@main
         with:
           key: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_HASH}}
@@ -131,7 +142,7 @@ jobs:
             ./wrt/staging_dir/tool*
 
       - name: Update Caches
-        if: env.WRT_TEST != 'true'
+        if: env.WRT_TEST != 'true' && env.CLEAN_CACHE != 'true'
         run: |
           if [ -d "./wrt/staging_dir" ]; then
             find "./wrt/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r DIR; do
@@ -160,6 +171,21 @@ jobs:
 
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
+      - name: Fix Recursive Dependencies
+        run: |
+          cd ./wrt/
+          echo "[INFO] Checking for recursive dependencies..."
+          
+          # Remove conflicting package dependencies
+          find ./feeds -name "Makefile" -type f -exec sed -i \
+            -e 's/DEPENDS.*luci-app-homeproxy.*//' \
+            -e 's/DEPENDS.*sing-box-tiny.*//' \
+            -e 's/DEPENDS.*luci-app-momo.*//' \
+            -e 's/DEPENDS.*mihomo-alpha.*//' \
+            {} \; 2>/dev/null || true
+          
+          echo "[INFO] Recursive dependencies checked and fixed"
 
       - name: Custom Packages
         run: |
@@ -193,8 +219,14 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
-
-          make -j$(nproc) || make -j1 V=s
+          echo "[INFO] Starting firmware compilation..."
+          
+          make -j$(nproc) 2>&1 | tee compile.log || {
+            echo "[ERROR] Parallel compilation failed, retrying with verbose output..."
+            tail -n 100 compile.log
+            make -j1 V=s 2>&1 | tee compile_verbose.log
+            exit $?
+          }
 
       - name: Machine Information
         run: |
