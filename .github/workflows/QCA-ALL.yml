@@ -24,6 +24,12 @@ on:
         required: false
         type: boolean
 
+CLEAN_CACHE:
+        description: '清理编译缓存（遇到编译问题时启用）'
+        default: 'false'
+        required: false
+        type: boolean
+        
 #CI权限
 permissions: write-all
 
@@ -58,6 +64,8 @@ jobs:
       WRT_PW: 无
       #源码链接
       WRT_REPO: https://github.com/${{matrix.SOURCE}}.git
+      #清理缓存
+      CLEAN_CACHE: ${{inputs.CLEAN_CACHE}}
       #源码分支
       WRT_BRANCH: ${{matrix.BRANCH}}
       #源码名称
