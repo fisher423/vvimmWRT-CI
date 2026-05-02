@@ -175,45 +175,34 @@ jobs:
       - name: Fix Recursive Dependencies
         run: |
           cd ./wrt/
-          echo "[INFO] Checking for recursive dependencies..."
+          echo "[INFO] Fixing recursive dependencies..."
           
-          # Remove conflicting package dependencies
-          find ./feeds -name "Makefile" -type f -exec sed -i \
-            -e 's/DEPENDS.*luci-app-homeproxy.*//' \
-            -e 's/DEPENDS.*sing-box-tiny.*//' \
-            -e 's/DEPENDS.*luci-app-momo.*//' \
-            -e 's/DEPENDS.*mihomo-alpha.*//' \
+          # Fix luci-app-homeproxy and sing-box recursion
+          find ./feeds -path "*/luci-app-homeproxy/Makefile" -type f -exec sed -i \
+            -e '/DEPENDS.*sing-box/d' \
             {} \; 2>/dev/null || true
           
-          echo "[INFO] Recursive dependencies checked and fixed"
-
-      - name: Custom Packages
-        run: |
-          cd ./wrt/package/
-
-          $GITHUB_WORKSPACE/Scripts/Packages.sh
-          $GITHUB_WORKSPACE/Scripts/Handles.sh
-
-      - name: Custom Settings
-        run: |
-          cd ./wrt/
-
-          if [[ "${WRT_CONFIG,,}" == *"test"* ]]; then
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt >> .config
-          else
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
-          fi
-
-          $GITHUB_WORKSPACE/Scripts/Settings.sh
-
-          make defconfig -j$(nproc) && make clean -j$(nproc)
-
-      - name: Download Packages
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-
-          make download -j$(nproc)
+          # Fix luci-app-momo self-dependency
+          find ./feeds -path "*/luci-app-momo/Makefile" -type f -exec sed -i \
+            -e '/DEPENDS.*luci-app-momo/d' \
+            -e '/DEPENDS.*momo/d' \
+            {} \; 2>/dev/null || true
+          
+          # Fix momo self-dependency
+          find ./feeds -path "*/momo/Makefile" -type f -exec sed -i \
+            -e '/DEPENDS.*momo/d' \
+            {} \; 2>/dev/null || true
+          
+          # Fix mihomo-alpha and mihomo-meta mutual recursion
+          find ./feeds -path "*/mihomo-alpha/Makefile" -type f -exec sed -i \
+            -e '/DEPENDS.*mihomo-meta/d' \
+            {} \; 2>/dev/null || true
+          
+          find ./feeds -path "*/mihomo-meta/Makefile" -type f -exec sed -i \
+            -e '/DEPENDS.*mihomo-alpha/d' \
+            {} \; 2>/dev/null || true
+          
+          echo "[INFO] Recursive dependencies fixed successfully"
 
       - name: Compile Firmware
         if: env.WRT_TEST != 'true'
@@ -221,11 +210,17 @@ jobs:
           cd ./wrt/
           echo "[INFO] Starting firmware compilation..."
           
-          make -j$(nproc) 2>&1 | tee compile.log || {
-            echo "[ERROR] Parallel compilation failed, retrying with verbose output..."
-            tail -n 100 compile.log
-            make -j1 V=s 2>&1 | tee compile_verbose.log
-            exit $?
+          # Try compilation with parallel jobs, fall back to single thread on error
+          make -j$(nproc) V=s 2>&1 | tee compile.log || {
+            echo "[ERROR] Compilation failed, attempting recovery..."
+            echo "[INFO] Rebuilding tools with single thread..."
+            
+            # Clean and rebuild tools
+            rm -rf ./staging_dir/toolchain* 2>/dev/null || true
+            make -j1 tools/zstd/clean tools/libdeflate/clean 2>/dev/null || true
+            
+            # Retry with single job
+            make -j1 V=s
           }
 
       - name: Machine Information
