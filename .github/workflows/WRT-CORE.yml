@@ -204,25 +204,50 @@ jobs:
           
           echo "[INFO] Recursive dependencies fixed successfully"
 
-      - name: Compile Firmware
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-          echo "[INFO] Starting firmware compilation..."
-          
-          # Try compilation with parallel jobs, fall back to single thread on error
-          make -j$(nproc) V=s 2>&1 | tee compile.log || {
-            echo "[ERROR] Compilation failed, attempting recovery..."
-            echo "[INFO] Rebuilding tools with single thread..."
-            
-            # Clean and rebuild tools
-            rm -rf ./staging_dir/toolchain* 2>/dev/null || true
-            make -j1 tools/zstd/clean tools/libdeflate/clean 2>/dev/null || true
-            
-            # Retry with single job
-            make -j1 V=s
-          }
+      - name: Generate Build Config
+  run: |
+    cd ./wrt/
+    
+    # Copy config file
+    if [ -f "../Config/$WRT_CONFIG.txt" ]; then
+      cp "../Config/$WRT_CONFIG.txt" ./.config
+      echo "[INFO] Config file loaded from ../Config/$WRT_CONFIG.txt"
+    else
+      echo "[ERROR] Config file not found: ../Config/$WRT_CONFIG.txt"
+      exit 1
+    fi
+    
+    # Skip menuconfig in CI environment - use batch mode config
+    echo "[INFO] Skipping menuconfig in CI environment..."
+    echo "[INFO] Using batch mode configuration..."
+    
+    # Make oldconfig to validate and update config
+    make -j$(nproc) oldconfig < /dev/null > /dev/null 2>&1 || true
 
+      - name: Compile Firmware
+  if: env.WRT_TEST != 'true'
+  run: |
+    cd ./wrt/
+    echo "[INFO] Starting firmware compilation..."
+    
+    # Verify .config exists before compilation
+    if [ ! -f "./.config" ]; then
+      echo "[ERROR] .config file not found!"
+      exit 1
+    fi
+    
+    # Try compilation with parallel jobs, fall back to single thread on error
+    make -j$(nproc) V=s 2>&1 | tee compile.log || {
+      echo "[ERROR] Compilation failed, attempting recovery..."
+      echo "[INFO] Rebuilding tools with single thread..."
+      
+      # Clean and rebuild tools
+      rm -rf ./staging_dir/toolchain* 2>/dev/null || true
+      make -j1 tools/zstd/clean tools/libdeflate/clean 2>/dev/null || true
+      
+      # Retry with single job
+      make -j1 V=s
+    }
       - name: Machine Information
         run: |
           cd ./wrt/
