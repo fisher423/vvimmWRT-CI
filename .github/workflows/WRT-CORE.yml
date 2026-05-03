@@ -225,6 +225,23 @@ jobs:
           # Make oldconfig to validate and update config
           make -j$(nproc) oldconfig < /dev/null > /dev/null 2>&1 || true
 
+      - name: Run Custom Scripts
+        run: |
+          cd ./wrt/package/
+
+          # Run Packages script
+          echo "[INFO] Running Packages.sh..."
+          bash "$GITHUB_WORKSPACE/Scripts/Packages.sh"
+
+          # Run Handles script
+          echo "[INFO] Running Handles.sh..."
+          bash "$GITHUB_WORKSPACE/Scripts/Handles.sh"
+
+          # Run Settings script
+          echo "[INFO] Running Settings.sh..."
+          cd ./wrt/
+          bash "$GITHUB_WORKSPACE/Scripts/Settings.sh"
+
       - name: Compile Firmware
         if: env.WRT_TEST != 'true'
         run: |
@@ -248,7 +265,16 @@ jobs:
        
             # Retry with single job
             make -j1 V=s
-          }                    
+          }
+
+          # Verify compilation produced firmware
+          if [ -z "$(find ./bin/targets/ -type f -name '*.bin' -o -name '*.img' -o -name '*.itb' 2>/dev/null)" ]; then
+            echo "[ERROR] No firmware files found in bin/targets/!"
+            echo "[INFO] Listing bin/targets/ contents:"
+            find ./bin/targets/ -type f 2>/dev/null || echo "(directory not found)"
+            exit 1
+          fi
+          echo "[INFO] Firmware compilation completed successfully!"                    
         
       - name: Machine Information
         run: |
@@ -263,28 +289,35 @@ jobs:
           echo "======================="
 
       - name: Package Firmware
+        if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/ && mkdir ./upload/
 
           cp -f ./.config ./upload/Config-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".txt
 
-          if [[ $WRT_TEST != 'true' ]]; then
-            echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
-            echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
-
-            find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
-
-            for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
-              EXT=$(basename $FILE | cut -d '.' -f 2-)
-              NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
-              NEW_FILE="$NAME"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_WIFI"-"$WRT_DATE"."$EXT"
-              mv -f $FILE ./upload/$NEW_FILE
-            done
-
-            find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
-
-            make clean -j$(nproc)
+          if [ -z "$(find ./bin/targets/ -type f 2>/dev/null)" ]; then
+            echo "[ERROR] No files found in bin/targets/, firmware compilation may have failed!"
+            exit 1
           fi
+
+          echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
+          echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
+
+          find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
+
+          for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
+            EXT=$(basename $FILE | cut -d '.' -f 2-)
+            NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
+            NEW_FILE="$NAME"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_WIFI"-"$WRT_DATE"."$EXT"
+            mv -f $FILE ./upload/$NEW_FILE
+          done
+
+          find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
+
+          echo "[INFO] Firmware files in upload/:"
+          ls -la ./upload/
+
+          make clean -j$(nproc)
 
       - name: Release Firmware
         uses: softprops/action-gh-release@master
