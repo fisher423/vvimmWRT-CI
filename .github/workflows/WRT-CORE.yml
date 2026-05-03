@@ -227,19 +227,19 @@ jobs:
 
       - name: Run Custom Scripts
         run: |
-          cd ./wrt/package/
-
           # Run Packages script
           echo "[INFO] Running Packages.sh..."
+          cd "$GITHUB_WORKSPACE/wrt/package/"
           bash "$GITHUB_WORKSPACE/Scripts/Packages.sh"
 
           # Run Handles script
           echo "[INFO] Running Handles.sh..."
+          cd "$GITHUB_WORKSPACE/wrt/package/"
           bash "$GITHUB_WORKSPACE/Scripts/Handles.sh"
 
           # Run Settings script
           echo "[INFO] Running Settings.sh..."
-          cd ./wrt/
+          cd "$GITHUB_WORKSPACE/wrt/"
           bash "$GITHUB_WORKSPACE/Scripts/Settings.sh"
 
       - name: Compile Firmware
