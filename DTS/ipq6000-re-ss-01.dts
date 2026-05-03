@@ -103,7 +103,7 @@
 	status = "okay";
 };
 
-&usb2_phy_0 {
+&qusb_phy_0 {
 	status = "okay";
 };
 
