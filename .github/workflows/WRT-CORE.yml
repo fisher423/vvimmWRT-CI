@@ -209,11 +209,12 @@ jobs:
           cd ./wrt/
     
           # Copy config file
-          if [ -f "../Config/$WRT_CONFIG.txt" ]; then
-            cp "../Config/$WRT_CONFIG.txt" ./.config
-            echo "[INFO] Config file loaded from ../Config/$WRT_CONFIG.txt"
+          CONFIG_SRC="$GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt"
+          if [ -f "$CONFIG_SRC" ]; then
+            cp "$CONFIG_SRC" ./.config
+            echo "[INFO] Config file loaded from $CONFIG_SRC"
           else
-            echo "[ERROR] Config file not found: ../Config/$WRT_CONFIG.txt"
+            echo "[ERROR] Config file not found: $CONFIG_SRC"
             exit 1
           fi
     
