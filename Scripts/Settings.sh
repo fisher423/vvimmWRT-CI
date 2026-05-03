@@ -53,6 +53,7 @@ fi
 
 #高通平台调整
 DTS_PATH="./target/linux/qualcommax/dts/"
+MK_PATH="./target/linux/qualcommax/image/"
 if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 	#取消nss相关feed
 	echo "CONFIG_FEED_nss_packages=n" >> ./.config
@@ -60,9 +61,37 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 	#设置NSS版本
 	echo "CONFIG_NSS_FIRMWARE_VERSION_11_4=n" >> ./.config
 	echo "CONFIG_NSS_FIRMWARE_VERSION_12_5=y" >> ./.config
+
+	#添加re-ss-01设备支持
+	RE_SS01_DTS="ipq6000-re-ss-01.dts"
+	if [ ! -f "${DTS_PATH}${RE_SS01_DTS}" ] && [ -f "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" ]; then
+		cp "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" "${DTS_PATH}${RE_SS01_DTS}"
+		echo "re-ss-01 DTS file has been added!"
+	fi
+	RE_SS01_MK="${MK_PATH}ipq60xx.mk"
+	if [ -f "$RE_SS01_MK" ] && ! grep -q "jdcloud_re-ss-01" "$RE_SS01_MK"; then
+		cat >> "$RE_SS01_MK" << 'EOF'
+
+define Device/jdcloud_re-ss-01
+	$(call Device/FitImage)
+	DEVICE_VENDOR := JDCloud
+	DEVICE_MODEL := RE-SS-01
+	SOC := ipq6000
+	BLOCKSIZE := 64k
+	KERNEL_SIZE := 6144k
+	DEVICE_DTS_CONFIG := config@cp03-c2
+	DEVICE_PACKAGES := ipq-wifi-jdcloud_re-ss-01
+endef
+TARGET_DEVICES += jdcloud_re-ss-01
+EOF
+		echo "re-ss-01 device definition has been added!"
+	fi
+
 	#无WIFI配置调整Q6大小
 	if [[ "${WRT_CONFIG,,}" == *"wifi"* && "${WRT_CONFIG,,}" == *"no"* ]]; then
 		find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
+		#禁用DTS中WiFi节点
+		find $DTS_PATH -type f -name "*.dts" -exec sed -i '/&wifi/,/^[[:space:]]*};/s/status = "okay"/status = "disabled"/' {} +
 		echo "qualcommax set up nowifi successfully!"
 	fi
 	#其他调整
