@@ -95,15 +95,7 @@ EOF
 		echo "re-ss-01 device definition has been added!"
 	fi
 
-	#无WIFI配置调整Q6大小
-	if [[ "${WRT_CONFIG,,}" == *"wifi"* && "${WRT_CONFIG,,}" == *"no"* ]]; then
-		for dts_dir in $DTS_PATH $FILES_DTS_PATH; do
-			[ -d "$dts_dir" ] || continue
-			find $dts_dir -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
-			find $dts_dir -type f -name "*.dts" -exec sed -i '/&wifi/,/^[[:space:]]*};/s/status = "okay"/status = "disabled"/' {} +
-		done
-		echo "qualcommax set up nowifi successfully!"
-	fi
+
 	#其他调整
 	echo "CONFIG_PACKAGE_kmod-usb-serial=y" >> ./.config
 	echo "CONFIG_PACKAGE_kmod-usb-serial-wwan=y" >> ./.config
