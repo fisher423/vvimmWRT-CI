@@ -53,6 +53,7 @@ fi
 
 #高通平台调整
 DTS_PATH="./target/linux/qualcommax/dts/"
+FILES_DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
 MK_PATH="./target/linux/qualcommax/image/"
 if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 	#取消nss相关feed
@@ -64,6 +65,13 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 
 	#添加re-ss-01设备支持
 	RE_SS01_DTS="ipq6000-re-ss-01.dts"
+	#复制DTS到files overlay目录（内核准备阶段会覆盖到内核源码树）
+	mkdir -p "${FILES_DTS_PATH}"
+	if [ ! -f "${FILES_DTS_PATH}${RE_SS01_DTS}" ] && [ -f "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" ]; then
+		cp "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" "${FILES_DTS_PATH}${RE_SS01_DTS}"
+		echo "re-ss-01 DTS file has been added to files overlay!"
+	fi
+	#复制DTS到dts目录
 	if [ ! -f "${DTS_PATH}${RE_SS01_DTS}" ] && [ -f "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" ]; then
 		cp "$GITHUB_WORKSPACE/DTS/${RE_SS01_DTS}" "${DTS_PATH}${RE_SS01_DTS}"
 		echo "re-ss-01 DTS file has been added!"
@@ -89,9 +97,11 @@ EOF
 
 	#无WIFI配置调整Q6大小
 	if [[ "${WRT_CONFIG,,}" == *"wifi"* && "${WRT_CONFIG,,}" == *"no"* ]]; then
-		find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
-		#禁用DTS中WiFi节点
-		find $DTS_PATH -type f -name "*.dts" -exec sed -i '/&wifi/,/^[[:space:]]*};/s/status = "okay"/status = "disabled"/' {} +
+		for dts_dir in $DTS_PATH $FILES_DTS_PATH; do
+			[ -d "$dts_dir" ] || continue
+			find $dts_dir -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
+			find $dts_dir -type f -name "*.dts" -exec sed -i '/&wifi/,/^[[:space:]]*};/s/status = "okay"/status = "disabled"/' {} +
+		done
 		echo "qualcommax set up nowifi successfully!"
 	fi
 	#其他调整
