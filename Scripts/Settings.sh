@@ -95,5 +95,7 @@ EOF
 		echo "qualcommax set up nowifi successfully!"
 	fi
 	#其他调整
+	echo "CONFIG_PACKAGE_kmod-usb-serial=y" >> ./.config
+	echo "CONFIG_PACKAGE_kmod-usb-serial-wwan=y" >> ./.config
 	echo "CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y" >> ./.config
 fi
