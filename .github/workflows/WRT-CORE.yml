@@ -43,12 +43,11 @@ on:
       WRT_TEST:
         required: false
         type: string
-
       CLEAN_CACHE:
         required: false
         type: string
         default: 'false'
-      
+
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
   WRT_CONFIG: ${{inputs.WRT_CONFIG}}
@@ -77,13 +76,9 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo -E apt -yqq purge firefox
           sudo -E apt -yqq update
           sudo -E apt -yqq full-upgrade
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E apt -yqq install dos2unix libfuse-dev
+          sudo -E apt -yqq install dos2unix libfuse-dev jq
           sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
           sudo -E systemctl daemon-reload
           sudo -E timedatectl set-timezone "Asia/Shanghai"
@@ -105,30 +100,19 @@ jobs:
       - name: Clone Code
         run: |
           git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
-
           cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
 
-          # GitHub Action 移除国内下载源（使用 jq 正确过滤 JSON，避免 sed 删行破坏格式）
+          # 移除国内下载源
           PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
-          if [ -f "$PROJECT_MIRRORS_FILE" ] && command -v jq &>/dev/null; then
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             jq 'with_entries(.value |= map(select(test("\\.cn/|tencent|aliyun") | not)))' "$PROJECT_MIRRORS_FILE" > "${PROJECT_MIRRORS_FILE}.tmp" && mv "${PROJECT_MIRRORS_FILE}.tmp" "$PROJECT_MIRRORS_FILE"
           fi
 
-      - name: Check Scripts
-        run: |
-          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
-          
       - name: Clean Build Cache if Requested
         if: env.CLEAN_CACHE == 'true'
         run: |
-          echo "[INFO] Cleaning build cache as requested..."
-          rm -rf ./wrt/staging_dir/toolchain*
-          rm -rf ./wrt/staging_dir/tool*
-          rm -rf ./wrt/build_dir/tool*
-          rm -rf ./wrt/tmp
-          rm -rf ./wrt/.ccache
-          echo "[INFO] Build cache cleaned successfully"
-          
+          rm -rf ./wrt/staging_dir/toolchain* ./wrt/staging_dir/tool* ./wrt/build_dir/tool* ./wrt/tmp ./wrt/.ccache
+
       - name: Check Caches
         id: check-cache
         if: env.WRT_TEST != 'true' && env.CLEAN_CACHE != 'true'
@@ -148,12 +132,7 @@ jobs:
             find "./wrt/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r DIR; do
               find "$DIR" -type f -exec touch {} +
             done
-
             mkdir -p ./wrt/tmp && echo "1" > ./wrt/tmp/.build
-
-            echo "toolchain skiped done!"
-          else
-            echo "caches missed!"
           fi
 
           if ${{steps.check-cache.outputs.cache-hit != 'true'}}; then
@@ -161,84 +140,46 @@ jobs:
             for CACHE_KEY in $CACHE_LIST; do
               gh cache delete $CACHE_KEY
             done
-
-            echo "caches cleanup done!"
           fi
 
       - name: Update Feeds
         run: |
           cd ./wrt/
-
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Fix Recursive Dependencies
         run: |
           cd ./wrt/
-          echo "[INFO] Fixing recursive dependencies..."
-          
-          # Fix luci-app-homeproxy and sing-box recursion
-          find ./feeds -path "*/luci-app-homeproxy/Makefile" -type f -exec sed -i \
-            -e '/DEPENDS.*sing-box/d' \
-            {} \; 2>/dev/null || true
-          
-          # Fix luci-app-momo self-dependency
-          find ./feeds -path "*/luci-app-momo/Makefile" -type f -exec sed -i \
-            -e '/DEPENDS.*luci-app-momo/d' \
-            -e '/DEPENDS.*momo/d' \
-            {} \; 2>/dev/null || true
-          
-          # Fix momo self-dependency
-          find ./feeds -path "*/momo/Makefile" -type f -exec sed -i \
-            -e '/DEPENDS.*momo/d' \
-            {} \; 2>/dev/null || true
-          
-          # Fix mihomo-alpha and mihomo-meta mutual recursion
-          find ./feeds -path "*/mihomo-alpha/Makefile" -type f -exec sed -i \
-            -e '/DEPENDS.*mihomo-meta/d' \
-            {} \; 2>/dev/null || true
-          
-          find ./feeds -path "*/mihomo-meta/Makefile" -type f -exec sed -i \
-            -e '/DEPENDS.*mihomo-alpha/d' \
-            {} \; 2>/dev/null || true
-          
-          echo "[INFO] Recursive dependencies fixed successfully"
+
+          find ./feeds -path "*/luci-app-homeproxy/Makefile" -type f -exec sed -i -e '/DEPENDS.*sing-box/d' {} \; 2>/dev/null || true
+          find ./feeds -path "*/luci-app-momo/Makefile" -type f -exec sed -i -e '/DEPENDS.*luci-app-momo/d' -e '/DEPENDS.*momo/d' {} \; 2>/dev/null || true
+          find ./feeds -path "*/momo/Makefile" -type f -exec sed -i -e '/DEPENDS.*momo/d' {} \; 2>/dev/null || true
+          find ./feeds -path "*/mihomo-alpha/Makefile" -type f -exec sed -i -e '/DEPENDS.*mihomo-meta/d' {} \; 2>/dev/null || true
+          find ./feeds -path "*/mihomo-meta/Makefile" -type f -exec sed -i -e '/DEPENDS.*mihomo-alpha/d' {} \; 2>/dev/null || true
 
       - name: Generate Build Config
         run: |
           cd ./wrt/
-    
-          # Copy config file
+
           CONFIG_SRC="$GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt"
           if [ -f "$CONFIG_SRC" ]; then
             cp "$CONFIG_SRC" ./.config
-            echo "[INFO] Config file loaded from $CONFIG_SRC"
           else
             echo "[ERROR] Config file not found: $CONFIG_SRC"
             exit 1
           fi
-    
-          # Skip menuconfig in CI environment - use batch mode config
-          echo "[INFO] Skipping menuconfig in CI environment..."
-          echo "[INFO] Using batch mode configuration..."
-    
-          # Make oldconfig to validate and update config
+
           make -j$(nproc) oldconfig < /dev/null > /dev/null 2>&1 || true
 
       - name: Run Custom Scripts
         run: |
-          # Run Packages script
-          echo "[INFO] Running Packages.sh..."
+          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+
           cd "$GITHUB_WORKSPACE/wrt/package/"
           bash "$GITHUB_WORKSPACE/Scripts/Packages.sh"
-
-          # Run Handles script
-          echo "[INFO] Running Handles.sh..."
-          cd "$GITHUB_WORKSPACE/wrt/package/"
           bash "$GITHUB_WORKSPACE/Scripts/Handles.sh"
 
-          # Run Settings script
-          echo "[INFO] Running Settings.sh..."
           cd "$GITHUB_WORKSPACE/wrt/"
           bash "$GITHUB_WORKSPACE/Scripts/Settings.sh"
 
@@ -246,47 +187,13 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
-          echo "[INFO] Starting firmware compilation..."
-    
-          # Verify .config exists before compilation
-          if [ ! -f "./.config" ]; then
-            echo "[ERROR] .config file not found!"
+
+          make -j$(nproc) V=s 2>&1 | tee compile.log || make -j1 V=s
+
+          if [ -z "$(find ./bin/targets/ -type f \( -name '*.bin' -o -name '*.img' -o -name '*.itb' \) 2>/dev/null)" ]; then
+            echo "[ERROR] No firmware files produced!"
             exit 1
           fi
-    
-          # Try compilation with parallel jobs, fall back to single thread on error
-          make -j$(nproc) V=s 2>&1 | tee compile.log || {
-            echo "[ERROR] Compilation failed, attempting recovery..."
-            echo "[INFO] Rebuilding tools with single thread..."
-       
-            # Clean and rebuild tools
-            rm -rf ./staging_dir/toolchain* 2>/dev/null || true
-            make -j1 tools/zstd/clean tools/libdeflate/clean 2>/dev/null || true
-       
-            # Retry with single job
-            make -j1 V=s
-          }
-
-          # Verify compilation produced firmware
-          if [ -z "$(find ./bin/targets/ -type f -name '*.bin' -o -name '*.img' -o -name '*.itb' 2>/dev/null)" ]; then
-            echo "[ERROR] No firmware files found in bin/targets/!"
-            echo "[INFO] Listing bin/targets/ contents:"
-            find ./bin/targets/ -type f 2>/dev/null || echo "(directory not found)"
-            exit 1
-          fi
-          echo "[INFO] Firmware compilation completed successfully!"                    
-        
-      - name: Machine Information
-        run: |
-          cd ./wrt/
-
-          echo "======================="
-          lscpu | grep -E "name|Core|Thread"
-          echo "======================="
-          df -h
-          echo "======================="
-          du -h --max-depth=1
-          echo "======================="
 
       - name: Package Firmware
         if: env.WRT_TEST != 'true'
@@ -294,11 +201,6 @@ jobs:
           cd ./wrt/ && mkdir ./upload/
 
           cp -f ./.config ./upload/Config-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".txt
-
-          if [ -z "$(find ./bin/targets/ -type f 2>/dev/null)" ]; then
-            echo "[ERROR] No files found in bin/targets/, firmware compilation may have failed!"
-            exit 1
-          fi
 
           echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
           echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
@@ -313,11 +215,6 @@ jobs:
           done
 
           find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
-
-          echo "[INFO] Firmware files in upload/:"
-          ls -la ./upload/
-
-          make clean -j$(nproc)
 
       - name: Release Firmware
         uses: softprops/action-gh-release@master
