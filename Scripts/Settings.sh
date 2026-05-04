@@ -95,6 +95,9 @@ EOF
 		echo "re-ss-01 device definition has been added!"
 	fi
 
+	#重新生成配置（使新添加的设备定义生效）
+	echo "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y" >> ./.config
+	make oldconfig < /dev/null > /dev/null 2>&1 || true
 
 	#其他调整
 	echo "CONFIG_PACKAGE_kmod-usb-serial=y" >> ./.config
