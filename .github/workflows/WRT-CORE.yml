@@ -62,7 +62,7 @@ env:
 jobs:
   core:
     name: ${{inputs.WRT_SOURCE}}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Projects
         uses: actions/checkout@main
@@ -86,11 +86,14 @@ jobs:
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
 
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+
       - name: Install local Automake 1.17
         run: |
           set -e
-          PREFIX=$GITHUB_WORKSPACE/automake-1.17
-          BUILD_DIR=$GITHUB_WORKSPACE/automake-1.17-build
+          PREFIX=/workdir/automake-1.17
+          BUILD_DIR=/workdir/automake-1.17-build
           mkdir -p "$BUILD_DIR"
           cd "$BUILD_DIR"
           curl -fL https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz -o automake-1.17.tar.xz
