@@ -62,7 +62,7 @@ env:
 jobs:
   core:
     name: ${{inputs.WRT_SOURCE}}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Projects
         uses: actions/checkout@main
@@ -85,6 +85,28 @@ jobs:
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
+
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+
+      - name: Install local Automake 1.17
+        run: |
+          set -e
+          PREFIX=/workdir/automake-1.17
+          BUILD_DIR=/workdir/automake-1.17-build
+          mkdir -p "$BUILD_DIR"
+          cd "$BUILD_DIR"
+          curl -fL https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz -o automake-1.17.tar.xz
+          rm -rf automake-1.17-src
+          mkdir -p automake-1.17-src
+          tar -xf automake-1.17.tar.xz -C automake-1.17-src --strip-components=1
+          cd automake-1.17-src
+          ./configure --prefix="$PREFIX"
+          make -j$(nproc)
+          make install
+          echo "$PREFIX/bin" >> $GITHUB_PATH
+          "$PREFIX/bin/automake-1.17" --version | sed -n '1p'
+          "$PREFIX/bin/aclocal-1.17" --version | sed -n '1p'
 
       - name: Initialization Values
         run: |
@@ -111,6 +133,15 @@ jobs:
       - name: Check Scripts
         run: |
           find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+
+      - name: Inject Device Support
+        if: contains(inputs.WRT_CONFIG, 'IPQ60XX')
+        run: |
+          cd ./wrt/
+          echo ">>> Injecting jdcloud device support for IPQ60XX platform..."
+          chmod +x $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+          $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+          echo ">>> Device support injection completed!"
 
       - name: Check Caches
         id: check-cache

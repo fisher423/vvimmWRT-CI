@@ -75,7 +75,7 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 	fi
 
 	#jdcloud设备支持注入
-	if [[ "${WRT_NAME,,}" == *"jdcloud"* ]] || grep -q "jdcloud_re-ss-01" ./Config/$WRT_CONFIG.txt 2>/dev/null; then
+	if [[ "${WRT_NAME,,}" == *"jdcloud"* ]] || grep -q "jdcloud_re-ss-01" $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt 2>/dev/null; then
 		echo ">>> Detected jdcloud device, injecting device support..."
 		chmod +x $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
 		$GITHUB_WORKSPACE/Scripts/inject-device-support.sh
