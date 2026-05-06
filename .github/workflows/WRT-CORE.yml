@@ -134,6 +134,15 @@ jobs:
         run: |
           find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
 
+      - name: Inject Device Support
+        if: contains(inputs.WRT_CONFIG, 'IPQ60XX')
+        run: |
+          cd ./wrt/
+          echo ">>> Injecting jdcloud device support for IPQ60XX platform..."
+          chmod +x $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+          $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+          echo ">>> Device support injection completed!"
+
       - name: Check Caches
         id: check-cache
         if: env.WRT_TEST != 'true'
