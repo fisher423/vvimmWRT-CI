@@ -73,4 +73,12 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 		find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
 		echo "qualcommax set up nowifi successfully!"
 	fi
+
+	#jdcloud设备支持注入
+	if [[ "${WRT_NAME,,}" == *"jdcloud"* ]] || grep -q "jdcloud_re-ss-01" ./Config/$WRT_CONFIG.txt 2>/dev/null; then
+		echo ">>> Detected jdcloud device, injecting device support..."
+		chmod +x $GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+		$GITHUB_WORKSPACE/Scripts/inject-device-support.sh
+		echo ">>> jdcloud device support injected successfully!"
+	fi
 fi
