@@ -35,9 +35,15 @@ jobs:
       fail-fast: false
       #max-parallel: 3
       matrix:
+<<<<<<< HEAD
         CONFIG: [IPQ60XX-WIFI-NO]
         SOURCE: [fanchmwrt/fanchmwrt]
         BRANCH: [fanchmwrt-25.12.2]
+=======
+        CONFIG: [IPQ60XX-WIFI-YES, IPQ60XX-WIFI-NO, IPQ807X-WIFI-YES, IPQ807X-WIFI-NO]
+        SOURCE: [VIKINGYFY/immortalwrt]
+        BRANCH: [main]
+>>>>>>> trae/solo-agent-5RlZKM
 
     #调用公用编译核心WRT-CORE.yml
     uses: ./.github/workflows/WRT-CORE.yml
