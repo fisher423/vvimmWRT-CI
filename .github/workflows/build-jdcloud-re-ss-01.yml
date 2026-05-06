@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026
+# Build jdcloud_re-ss-01 Firmware
+
+name: Build jdcloud_re-ss-01
+
+on:
+  schedule:
+    - cron: '0 2 */4 * *'
+  workflow_dispatch:
+    inputs:
+      PACKAGE:
+        description: 'Manual package adjustments, separate multiple with \\n'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  TZ: Asia/Shanghai
+  WORKFLOW_NAME: jdcloud_re-ss-01
+  WRT_THEME: aurora
+  WRT_NAME: jdcloud-re-ss-01
+  WRT_SSID: JDCloud-WiFi
+  WRT_WORD: 12345678
+  WRT_IP: 192.168.31.1
+  WRT_PW: none
+
+jobs:
+  build:
+    name: Build jdcloud_re-ss-01
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Projects
+        uses: actions/checkout@main
+
+      - name: Initialization Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt -yqq purge firefox
+          sudo -E apt -yqq update
+          sudo -E apt -yqq full-upgrade
+          sudo -E apt -yqq autoremove --purge
+          sudo -E apt -yqq autoclean
+          sudo -E apt -yqq clean
+          sudo -E apt -yqq install dos2unix libfuse-dev
+          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo -E systemctl daemon-reload
+          sudo -E timedatectl set-timezone "$TZ"
+
+          sudo mkdir -p /mnt/build_wrt
+          sudo chown $USER:$USER /mnt/build_wrt
+          sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
+
+      - name: Initialization Values
+        run: |
+          echo "WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d-%H.%M.%S")" >> $GITHUB_ENV
+          echo "WRT_MARK=${GITHUB_REPOSITORY%%/*}" >> $GITHUB_ENV
+          echo "WRT_INFO=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+          echo "WRT_TARGET=qualcommax" >> $GITHUB_ENV
+          echo "WRT_WIFI=wifi-yes" >> $GITHUB_ENV
+
+      - name: Clone Code
+        run: |
+          git clone --depth=1 --single-branch --branch fanchmwrt-25.12.2 https://github.com/fanchmwrt/fanchmwrt.git ./wrt/
+          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
+
+          PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+          fi
+
+      - name: Check Scripts
+        run: |
+          chmod +x $GITHUB_WORKSPACE/sh/*.sh
+          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+
+      - name: Inject Device Support
+        run: |
+          cd ./wrt/
+          chmod +x $GITHUB_WORKSPACE/sh/inject-device-support.sh
+          $GITHUB_WORKSPACE/sh/inject-device-support.sh
+
+      - name: Update Feeds
+        run: |
+          cd ./wrt/
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Custom Packages
+        run: |
+          cd ./wrt/package/
+          if [ -f "$GITHUB_WORKSPACE/Scripts/Packages.sh" ]; then
+            $GITHUB_WORKSPACE/Scripts/Packages.sh
+          fi
+          if [ -f "$GITHUB_WORKSPACE/Scripts/Handles.sh" ]; then
+            $GITHUB_WORKSPACE/Scripts/Handles.sh
+          fi
+
+      - name: Custom Settings
+        run: |
+          cd ./wrt/
+          cat $GITHUB_WORKSPACE/config/jdcloud_re-ss-01.config $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
+          chmod +x $GITHUB_WORKSPACE/sh/scripts-part1.sh
+          $GITHUB_WORKSPACE/sh/scripts-part1.sh
+          make defconfig -j$(nproc) && make clean -j$(nproc)
+
+      - name: Download Packages
+        run: |
+          cd ./wrt/
+          make download -j$(nproc)
+
+      - name: Compile Firmware
+        run: |
+          cd ./wrt/
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Package Firmware
+        run: |
+          cd ./wrt/ && mkdir ./upload/
+
+          cp -f ./.config ./upload/Config-"$WRT_TARGET"-"$WRT_INFO"-"$WRT_DATE".txt
+
+          echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
+          echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
+
+          find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
+
+          for FILE in $(find ./bin/targets/ -type f -iname "*jdcloud_re-ss-01*") ; do
+            EXT=$(basename $FILE | cut -d '.' -f 2-)
+            NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\(jdcloud_re-ss-01\).*")
+            NEW_FILE="$NAME"-"$WRT_INFO"-"$WRT_DATE"."$EXT"
+            mv -f $FILE ./upload/$NEW_FILE
+          done
+
+          find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
+
+          make clean -j$(nproc)
+
+      - name: Release Firmware
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: jdcloud_re-ss-01-${{ env.WRT_DATE }}
+          files: ./wrt/upload/*.*
+          body: |
+            JDCloud RE-SS-01 Firmware Build
+
+            Source: https://github.com/fanchmwrt/fanchmwrt
+            Branch: fanchmwrt-25.12.2
+
+            Login IP: 192.168.31.1
+            Login Password: none
+
+            WiFi SSID: JDCloud-WiFi
+            WiFi Password: 12345678
+
+            Kernel: ${{ env.WRT_KVER }}
+            Packages: ${{ env.WRT_LIST }}

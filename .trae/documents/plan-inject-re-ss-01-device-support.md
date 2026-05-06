@@ -7,8 +7,8 @@
 ## 当前状态分析
 
 ### fanchmwrt 仓库现状
-- **主分支**: `fanchmwrt-24.10.4`
-- **内核版本**: 6.12
+- **主分支**: `fanchmwrt-25.12.2`
+- **内核版本**: 待确认（参考仓库使用 6.12）
 - **支持的设备**: GL-iNet AXT-1800, JDC-AX6600, GL-MT5000, GL-MT3600BE, TR-3000
 - **目标平台**: 主要支持 MediaTek (filogic) 和部分 Qualcomm (ipq60xx 仅有 AXT1800/JDC-AX6600)
 - **缺失**: `target/linux/qualcommax/ipq60xx` 子目标目录
@@ -95,7 +95,7 @@ jobs:
         include:
           - device: jdcloud_re-ss-01
             repo_url: 'https://github.com/fanchmwrt/fanchmwrt.git'
-            repo_branch: 'fanchmwrt-24.10.4'
+            repo_branch: 'fanchmwrt-25.12.2'
             config_file: './config/jdcloud_re-ss-01.config'
 ```
 
