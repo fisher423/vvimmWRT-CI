@@ -57,7 +57,7 @@ if [ -d "target/linux/qualcommax/image" ]; then
     echo -e "${GREEN}  Copied target/linux/qualcommax/image${NC}"
 fi
 
-echo -e "${YELLOW}[3/5] Copy wifi board files for jdcloud...${NC}"
+echo -e "${YELLOW}[3/5] Copy wifi board files and Makefile for jdcloud...${NC}"
 
 WIFI_BOARD_DIR="$OPENWRT_DIR/package/firmware/ipq-wifi"
 mkdir -p "$WIFI_BOARD_DIR"
@@ -67,6 +67,12 @@ for board_file in "$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi/board-"*
         echo -e "${GREEN}  Copied wifi board: $(basename $board_file)${NC}"
     fi
 done
+
+IMMORTALWRT_IPQ_WIFI_MAKEFILE="$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi/Makefile"
+if [ -f "$IMMORTALWRT_IPQ_WIFI_MAKEFILE" ]; then
+    cp -f "$IMMORTALWRT_IPQ_WIFI_MAKEFILE" "$WIFI_BOARD_DIR/Makefile"
+    echo -e "${GREEN}  Copied ipq-wifi Makefile from ImmortalWrt${NC}"
+fi
 
 echo -e "${YELLOW}[4/5] Check and fix device configuration...${NC}"
 
