@@ -89,7 +89,21 @@ jobs:
           sudo rm -rf /etc/apt/sources.list.d/*
           sudo -E apt-get -yqq update
           sudo -E apt-get -yqq purge azure-cli* ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+
+          # Pin core packages to prevent full-upgrade from breaking them with GLIBC_2.38
+          sudo tee /etc/apt/preferences.d/pin-core-packages << 'PREF'
+          Package: sed coreutils findutils grep gawk diffutils
+          Pin: release o=Ubuntu
+          Pin-Priority: 1001
+          PREF
+
           sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+
+          # Verify core tools are not broken
+          echo "Checking GLIBC compatibility..."
+          sed --version | head -1
+          find --version | head -1
+
           sudo -E apt-get -yqq install dos2unix libfuse-dev
           sudo -E apt-get -yqq autoremove --purge
           sudo -E apt-get -yqq clean
