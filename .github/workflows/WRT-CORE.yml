@@ -154,7 +154,8 @@ jobs:
 
       - name: Check Scripts
         run: |
-          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; 2>/dev/null || true
+          find ./ -maxdepth 3 -type f -iregex ".*\.sh$" -exec chmod +x {} \;
 
       - name: Inject Device Support
         if: contains(inputs.WRT_CONFIG, 'IPQ60XX')
@@ -212,7 +213,9 @@ jobs:
         run: |
           cd ./wrt/package/
 
+          chmod +x $GITHUB_WORKSPACE/Scripts/Packages.sh
           $GITHUB_WORKSPACE/Scripts/Packages.sh
+          chmod +x $GITHUB_WORKSPACE/Scripts/Handles.sh
           $GITHUB_WORKSPACE/Scripts/Handles.sh
 
       - name: Custom Settings
@@ -225,6 +228,7 @@ jobs:
             cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
           fi
 
+          chmod +x $GITHUB_WORKSPACE/Scripts/Settings.sh
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
           make defconfig -j$(nproc) && make clean -j$(nproc)
