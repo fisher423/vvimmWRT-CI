@@ -22,7 +22,7 @@ TEMP_DIR="/tmp/immortalwrt-device-inject"
 rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR"
 
-echo -e "${YELLOW}[1/4] Clone ImmortalWrt source (target/linux/qualcommax)...${NC}"
+echo -e "${YELLOW}[1/5] Clone ImmortalWrt source (target/linux/qualcommax)...${NC}"
 
 cd "$TEMP_DIR"
 git clone -b "$IMMORTALWRT_BRANCH" "$IMMORTALWRT_URL" --single-branch --depth 1 immortalwrt-temp
@@ -31,7 +31,7 @@ cd immortalwrt-temp
 git sparse-checkout set target/linux/qualcommax 2>/dev/null || true
 git checkout 2>/dev/null || true
 
-echo -e "${YELLOW}[2/4] Copy qualcommax/ipq60xx device support files...${NC}"
+echo -e "${YELLOW}[2/5] Copy qualcommax/ipq60xx device support files...${NC}"
 
 TARGET_DIR="$OPENWRT_DIR/target/linux/qualcommax"
 mkdir -p "$TARGET_DIR"
@@ -57,7 +57,18 @@ if [ -d "target/linux/qualcommax/image" ]; then
     echo -e "${GREEN}  Copied target/linux/qualcommax/image${NC}"
 fi
 
-echo -e "${YELLOW}[3/4] Check and fix device configuration...${NC}"
+echo -e "${YELLOW}[3/5] Copy wifi board files for jdcloud...${NC}"
+
+WIFI_BOARD_DIR="$OPENWRT_DIR/package/firmware/ipq-wifi"
+mkdir -p "$WIFI_BOARD_DIR"
+for board_file in "$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi/board-"*jdcloud*; do
+    if [ -f "$board_file" ]; then
+        cp -f "$board_file" "$WIFI_BOARD_DIR/"
+        echo -e "${GREEN}  Copied wifi board: $(basename $board_file)${NC}"
+    fi
+done
+
+echo -e "${YELLOW}[4/5] Check and fix device configuration...${NC}"
 
 if [ -f "$TARGET_DIR/image/ipq60xx.mk" ]; then
     if grep -q "jdcloud_re-ss-01" "$TARGET_DIR/image/ipq60xx.mk"; then
@@ -119,7 +130,7 @@ EOF
     echo -e "${GREEN}  Created ipq60xx/config-default${NC}"
 fi
 
-echo -e "${YELLOW}[4/4] Check qualcommax/Makefile...${NC}"
+echo -e "${YELLOW}[5/5] Check qualcommax/Makefile...${NC}"
 
 if [ -f "$TARGET_DIR/Makefile" ]; then
     if grep -q "ipq60xx" "$TARGET_DIR/Makefile"; then
