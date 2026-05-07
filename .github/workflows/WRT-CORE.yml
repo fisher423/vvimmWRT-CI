@@ -89,25 +89,27 @@ jobs:
           sudo rm -rf /etc/apt/sources.list.d/*
           sudo -E apt-get -yqq update
           sudo -E apt-get -yqq purge azure-cli* ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
-
-          # Pin core packages to prevent full-upgrade from breaking them with GLIBC_2.38
-          sudo tee /etc/apt/preferences.d/pin-core-packages << 'PREF'
-          Package: sed coreutils findutils grep gawk diffutils
-          Pin: release o=Ubuntu
-          Pin-Priority: 1001
-          PREF
-
-          sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-
-          # Verify core tools are not broken
-          echo "Checking GLIBC compatibility..."
-          sed --version | head -1
-          find --version | head -1
-
-          sudo -E apt-get -yqq install dos2unix libfuse-dev
+          sudo -E apt-get -yqq --no-install-recommends install \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses5-dev libssl-dev python3-setuptools \
+            rsync swig unzip zlib1g-dev file wget xsltproc python3-pyelftools \
+            python3-cryptography quilt patch perl less autoconf automake \
+            libtool pkg-config cmake curl sudo time aria2 tree jq ccache \
+            e2fsprogs dos2unix libfuse-dev device-tree-compiler \
+            python3 python3-pip python3-docutils python3-ply python3-requests \
+            gperf haveged help2man intltool libelf-dev libglib2.0-dev \
+            libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libreadline-dev \
+            libyaml-dev libz-dev ninja-build re2c scons squashfs-tools \
+            subversion texinfo uglifyjs xmlto zlib1g-dev zstd xxd
           sudo -E apt-get -yqq autoremove --purge
           sudo -E apt-get -yqq clean
           sudo -E timedatectl set-timezone "Asia/Shanghai"
+
+          # Verify core tools work
+          echo "GLIBC check:"
+          sed --version | head -1
+          find --version | head -1
+          ldd --version | head -1
 
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
