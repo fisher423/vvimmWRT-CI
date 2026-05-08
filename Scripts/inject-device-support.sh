@@ -28,7 +28,7 @@ cd "$TEMP_DIR"
 git clone -b "$IMMORTALWRT_BRANCH" "$IMMORTALWRT_URL" --single-branch --depth 1 immortalwrt-temp
 
 cd immortalwrt-temp
-git sparse-checkout set target/linux/qualcommax 2>/dev/null || true
+git sparse-checkout set target/linux/qualcommax package/firmware/ipq-wifi 2>/dev/null || true
 git checkout 2>/dev/null || true
 
 echo -e "${YELLOW}[2/5] Copy qualcommax/ipq60xx device support files...${NC}"
@@ -60,18 +60,36 @@ fi
 echo -e "${YELLOW}[3/5] Copy wifi board files and Makefile for jdcloud...${NC}"
 
 WIFI_BOARD_DIR="$OPENWRT_DIR/package/firmware/ipq-wifi"
+IMMORTALWRT_WIFI_DIR="$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi"
+
+if [ ! -d "$IMMORTALWRT_WIFI_DIR" ]; then
+    echo -e "${RED}  ERROR: ImmortalWrt ipq-wifi directory not found at $IMMORTALWRT_WIFI_DIR${NC}"
+    echo -e "${RED}  sparse-checkout may have failed. Falling back to full clone...${NC}"
+    cd "$TEMP_DIR/immortalwrt-temp"
+    git sparse-checkout disable 2>/dev/null || true
+fi
+
 mkdir -p "$WIFI_BOARD_DIR"
-for board_file in "$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi/board-"*jdcloud*; do
+BOARD_COUNT=0
+for board_file in "$IMMORTALWRT_WIFI_DIR/board-"*jdcloud*; do
     if [ -f "$board_file" ]; then
         cp -f "$board_file" "$WIFI_BOARD_DIR/"
         echo -e "${GREEN}  Copied wifi board: $(basename $board_file)${NC}"
+        BOARD_COUNT=$((BOARD_COUNT + 1))
     fi
 done
 
-IMMORTALWRT_IPQ_WIFI_MAKEFILE="$TEMP_DIR/immortalwrt-temp/package/firmware/ipq-wifi/Makefile"
+if [ "$BOARD_COUNT" -eq 0 ]; then
+    echo -e "${RED}  WARNING: No jdcloud wifi board files found!${NC}"
+fi
+
+IMMORTALWRT_IPQ_WIFI_MAKEFILE="$IMMORTALWRT_WIFI_DIR/Makefile"
 if [ -f "$IMMORTALWRT_IPQ_WIFI_MAKEFILE" ]; then
     cp -f "$IMMORTALWRT_IPQ_WIFI_MAKEFILE" "$WIFI_BOARD_DIR/Makefile"
     echo -e "${GREEN}  Copied ipq-wifi Makefile from ImmortalWrt${NC}"
+else
+    echo -e "${RED}  ERROR: ImmortalWrt ipq-wifi Makefile not found!${NC}"
+    exit 1
 fi
 
 echo -e "${YELLOW}[4/5] Check and fix device configuration...${NC}"
