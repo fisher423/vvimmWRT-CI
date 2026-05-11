@@ -1,0 +1,5 @@
+- [x] WRT-CORE.yml 中已添加 "Free Disk Space" 步骤，使用 endersonmenezes/free-disk-space@v2
+- [x] WRT-CORE.yml 的 "Initialization Environment" 步骤中已包含 python3-netifaces 和 bc 依赖包
+- [x] WRT-CORE.yml 的缓存路径已修改为完整的 ./wrt/staging_dir
+- [x] WRT-CORE.yml 中已移除 /mnt/build_wrt 符号链接创建相关命令
+- [x] 修改后的 WRT-CORE.yml 语法正确，可以被 GitHub Actions 正常解析
