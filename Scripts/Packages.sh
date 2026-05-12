@@ -78,7 +78,7 @@ UPDATE_PACKAGE "timecontrol" "sirpdboy/luci-app-timecontrol" "main"
 UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "gecoosac luci-app-timewol luci-app-wolplus"
 UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 UPDATE_PACKAGE "open-app-filter" "destan19/OpenAppFilter" "master" "" "luci-app-appfilter oaf"
-UPDATE_PACKAGE "luci-app-lucky" "gdy666/luci-app-lucky" "main" "luci-app-lucky lucky"
+UPDATE_PACKAGE "luci-app-lucky" "gdy666/luci-app-lucky" "main" "" "luci-app-lucky lucky"
 
 #更新软件包版本
 UPDATE_VERSION() {
